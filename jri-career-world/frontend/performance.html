@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Wizard's Insight - JRI Career World</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Pixelify+Sans:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- NEW: Added marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            color: #ffffff;
+            background-color: #0c0a1a; /* Dark purple background */
+            position: relative;
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        h1, h2, .btn-pixel, .stat-block h3 { 
+            font-family: 'Pixelify Sans', sans-serif; 
+        }
+
+        .btn-pixel {
+            padding: 0.75rem 1.5rem; 
+            font-weight: 700; 
+            text-align: center; 
+            cursor: pointer;
+            border: 3px solid #2a2a2a; 
+            box-shadow: inset -4px -4px 0px 0px rgba(0,0,0,0.25);
+            transition: all 0.1s ease-in-out; 
+            text-transform: uppercase;
+        }
+        
+        .btn-pixel:active:not(:disabled) { 
+            box-shadow: inset 4px 4px 0px 0px rgba(0,0,0,0.25); 
+            transform: translateY(4px); 
+        }
+
+        .btn-gray { background-color: #6a6a6a; color: white; }
+
+        .content-container {
+            border: 4px solid #a855f7; /* Purple border */
+            background-color: rgba(12, 10, 26, 0.85);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
+        }
+
+        .stat-block {
+            background-color: rgba(0,0,0,0.4); 
+            border: 2px solid #4a4a4a;
+            padding: 1.5rem; 
+            border-radius: 6px; 
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .scrollable-content {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .scrollable-content::-webkit-scrollbar { width: 8px; }
+        .scrollable-content::-webkit-scrollbar-track { background: #2a2a2a; border-radius: 4px; }
+        .scrollable-content::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 4px; }
+        .scrollable-content::-webkit-scrollbar-thumb:hover { background: #c084fc; }
+        
+        /* --- NEW: Styles for rendered Markdown --- */
+        .markdown-content h3 {
+            font-family: 'Pixelify Sans', sans-serif;
+            font-size: 1.1rem;
+            color: #d8b4fe;
+            margin-top: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        .markdown-content ul {
+            list-style-position: inside;
+            padding-left: 0.5rem;
+        }
+        .markdown-content li {
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="content-container w-full max-w-5xl p-8 rounded-lg">
+        <h1 class="text-4xl md:text-5xl text-center text-purple-400 mb-4">Malgosha's Insight</h1>
+        <p class="text-center text-gray-300 mb-8">The wizard reveals your progress. Gaze into the scrying pool to see your strengths and weaknesses.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Resume Analysis Section -->
+            <div class="stat-block">
+                <h3 class="text-3xl text-purple-300 mb-4">Scroll of Experience</h3>
+                <div id="resume-analysis-content" class="scrollable-content pr-4">
+                    <p class="text-gray-400">Awaiting your resume scroll...</p>
+                </div>
+            </div>
+
+            <!-- Assessment History Section -->
+            <div class="stat-block">
+                <h3 class="text-3xl text-purple-300 mb-4">Trials of Wisdom</h3>
+                <div id="assessment-history-content" class="scrollable-content pr-4">
+                    <p class="text-gray-400">Your trial results will appear here...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+             <a href="index.html" class="btn-pixel btn-gray">Return to World</a>
+        </div>
+    </div>
+
+    <script>
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) {
+            window.location.href = 'login.html';
+        }
+
+        const resumeContainer = document.getElementById('resume-analysis-content');
+        const assessmentContainer = document.getElementById('assessment-history-content');
+
+        // --- Magical Particle Effect ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let particles = [];
+
+        function createParticle() {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: Math.random() * 0.4 - 0.2,
+                vy: Math.random() * 0.4 - 0.2,
+                radius: Math.random() * 1.5 + 0.5,
+                opacity: Math.random() * 0.5 + 0.2
+            });
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(168, 85, 247, ${p.opacity})`;
+                ctx.fill();
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        for (let i = 0; i < 100; i++) {
+            createParticle();
+        }
+        animateParticles();
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            particles = [];
+            for (let i = 0; i < 100; i++) {
+                createParticle();
+            }
+        });
+        // --- End Particle Effect ---
+
+
+        // --- Data Fetching ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchUserData();
+            fetchAssessmentHistory();
+        });
+
+        async function fetchUserData() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/users/me', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                if (!response.ok) throw new Error('Failed to fetch user data.');
+                const user = await response.json();
+
+                if (user.resume_analysis) {
+                    // --- FIX: Use marked.js to render resume analysis ---
+                    resumeContainer.innerHTML = `<div class="markdown-content text-gray-300">${marked.parse(user.resume_analysis)}</div>`;
+                } else {
+                    resumeContainer.innerHTML = `<p class="text-gray-400">The scrying pool is cloudy... You have not yet submitted a resume scroll for analysis.</p>`;
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+                resumeContainer.innerHTML = `<p class="text-red-400">Could not retrieve your scroll's analysis.</p>`;
+            }
+        }
+
+        async function fetchAssessmentHistory() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/assessment/history', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                if (!response.ok) throw new Error('Failed to fetch assessment history.');
+                const history = await response.json();
+
+                if (history.length > 0) {
+                    let historyHTML = '<ul class="space-y-6">'; // Increased spacing
+                    const maxScore = 104;
+                    history.forEach(item => {
+                        const grade = Math.round((item.score / maxScore) * 100);
+                        const date = new Date(item.created_at).toLocaleDateString();
+                        // --- FIX: Added the analysis section ---
+                        const analysisHTML = item.analysis ? `<div class="markdown-content mt-3 text-sm text-gray-400 border-t border-gray-600 pt-3">${marked.parse(item.analysis)}</div>` : '';
+
+                        historyHTML += `
+                            <li class="p-3 bg-purple-900 bg-opacity-30 rounded-md border border-purple-700">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-300">Trial on ${date}</span>
+                                    <span class="font-bold text-lg text-green-400">${grade}/100</span>
+                                </div>
+                                ${analysisHTML}
+                            </li>
+                        `;
+                    });
+                    historyHTML += '</ul>';
+                    assessmentContainer.innerHTML = historyHTML;
+                } else {
+                    assessmentContainer.innerHTML = `<p class="text-gray-400">You have not yet completed any trials of wisdom.</p>`;
+                }
+            } catch (error) {
+                console.error("Error fetching assessment history:", error);
+                assessmentContainer.innerHTML = `<p class="text-red-400">Could not retrieve your trial history.</p>`;
+            }
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playable Character with Follow Camera</title>
+    <style>
+        /* Basic CSS to make the canvas fill the screen */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        canvas {
+            display: block;
+        }
+        /* Styling for the instruction overlay */
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            font-size: 16px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head><body>
+    <!-- Instructions for the user -->
+    <div id="instructions">
+        Use <strong>W, A, S, D</strong> to move and <strong>Shift</strong> to run.
+    </div>
+
+    <!-- We will use the three.js library for 3D graphics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- We need the GLTFLoader to load custom 3D models -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script>
+        // === SCENE SETUP ===
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 10); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // === LIGHTING ===
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 7.5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        scene.add(directionalLight);
+
+
+        // === OBJECTS ===
+        const groundGeometry = new THREE.PlaneGeometry(30, 30);
+        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, side: THREE.DoubleSide });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // This will hold our character model and its animation state
+        let character;
+        let mixer;
+        const animations = {};
+        let activeAction;
+
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            'models/player.glb',
+            function (gltf) {
+                character = gltf.scene;
+                character.scale.set(1.2, 1.2, 1.2);
+                character.position.y = 0;
+
+                character.traverse(function (node) {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                    }
+                });
+
+                scene.add(character);
+                
+                mixer = new THREE.AnimationMixer(character);
+                
+                console.log("Available animations:");
+                gltf.animations.forEach((clip) => {
+                    console.log(`- ${clip.name}`);
+                    const action = mixer.clipAction(clip);
+                    animations[clip.name] = action;
+                });
+
+                const idleAnimationName = 'still_test'; 
+                if (animations[idleAnimationName]) {
+                    activeAction = animations[idleAnimationName];
+                    activeAction.play();
+                } else if (gltf.animations.length > 0) {
+                    const fallbackAnimationName = gltf.animations[0].name;
+                    console.warn(`'${idleAnimationName}' animation not found. Falling back to '${fallbackAnimationName}'.`);
+                    activeAction = animations[fallbackAnimationName];
+                    activeAction.play();
+                }
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (error) {
+                console.log('An error happened while loading the model.', error);
+            }
+        );
+
+        // Function to smoothly transition between animations
+        function switchToAction(name, duration = 0.2, timeScale = 1) {
+            if (!animations[name]) return;
+            const newAction = animations[name];
+            if (activeAction !== newAction) {
+                const oldAction = activeAction;
+                activeAction = newAction;
+                if (oldAction) oldAction.fadeOut(duration);
+                activeAction
+                    .reset()
+                    .setEffectiveTimeScale(timeScale) // Set animation speed
+                    .setEffectiveWeight(1)
+                    .fadeIn(duration)
+                    .play();
+            } else {
+                 // Ensure the current action has the correct speed
+                 activeAction.setEffectiveTimeScale(timeScale);
+            }
+        }
+
+        // === CONTROLS ===
+        // *** NEW: Added 'shift' key for running ***
+        const keysPressed = { w: false, a: false, s: false, d: false, shift: false };
+        window.addEventListener('keydown', (event) => {
+            const key = event.key.toLowerCase();
+            if (key in keysPressed) keysPressed[key] = true;
+        });
+        window.addEventListener('keyup', (event) => {
+            const key = event.key.toLowerCase();
+            if (key in keysPressed) keysPressed[key] = false;
+        });
+
+        // === ANIMATION LOOP ===
+        const clock = new THREE.Clock();
+        const walkSpeed = 3;
+        const runSpeed = 5.9; // *** NEW: Speed for running ***
+        const rotationSpeed = 2.5;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+
+            if (character) {
+                const isTurning = keysPressed.a || keysPressed.d;
+                const isMoving = keysPressed.w || keysPressed.s;
+                const isRunning = keysPressed.shift; // *** NEW: Check if running ***
+
+                // 1. Handle Rotation
+                if (keysPressed.a) character.rotation.y += rotationSpeed * delta;
+                if (keysPressed.d) character.rotation.y -= rotationSpeed * delta;
+
+                // 2. Handle Movement
+                const currentSpeed = isRunning ? runSpeed : walkSpeed;
+                if (keysPressed.w) {
+                    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(character.quaternion);
+                    character.position.add(forward.multiplyScalar(currentSpeed * delta));
+                }
+                if (keysPressed.s) {
+                    const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(character.quaternion);
+                    character.position.add(backward.multiplyScalar(currentSpeed * delta));
+                }
+                
+                // 3. Handle Animations
+                // *** To add more animations, define their names here ***
+                const idleAnimationName = 'still_test';
+                const walkAnimationName = 'walking_test';
+                const runAnimationName = 'running_test'; // Or whatever your run animation is called
+
+                if (isMoving || isTurning) {
+                    if (isRunning && animations[runAnimationName]) {
+                        // If we are running and have a 'run' animation, play it.
+                        switchToAction(runAnimationName);
+                    } else {
+                        // Otherwise, play the walk animation.
+                        // If running, play it faster. If not, play it at normal speed.
+                        const timeScale = isRunning ? 2 : 1;
+                        switchToAction(walkAnimationName, 0.2, timeScale);
+                    }
+                } else {
+                    // If not moving, play the idle animation.
+                    switchToAction(idleAnimationName);
+                }
+
+                // 4. Camera Follow Logic
+                const cameraOffset = new THREE.Vector3(0, 4, 8); 
+                cameraOffset.applyQuaternion(character.quaternion);
+                const targetCameraPosition = new THREE.Vector3().addVectors(character.position, cameraOffset);
+                
+                camera.position.lerp(targetCameraPosition, 0.1);
+
+                const lookAtPosition = new THREE.Vector3().copy(character.position);
+                lookAtPosition.y += 1.5;
+                camera.lookAt(lookAtPosition);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // === RESIZE HANDLING ===
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
