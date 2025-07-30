@@ -14,8 +14,7 @@
         body { 
             font-family: 'Inter', sans-serif; 
             color: #ffffff;
-            /* --- REMOVED: Background GIF removed --- */
-            background-color: #1a1a1a; /* Solid background color */
+            background-color: #1a1a1a;
             position: relative;
         }
 
@@ -96,12 +95,11 @@
             border-color: #f7b731;
         }
         
-        /* --- VALIDATION: Styles for highlighting unanswered questions --- */
         .question-block.invalid {
             border: 2px solid #ef4444; /* Red border */
             border-radius: 8px;
             padding: 1rem;
-            margin: -1rem; /* Offset the padding to keep layout consistent */
+            margin: -1rem;
             animation: shake 0.5s;
             transition: border 0.2s;
         }
@@ -119,9 +117,8 @@
         <h1 class="text-4xl md:text-5xl text-center text-yellow-400 mb-4">The Trial of Wisdom</h1>
         <p class="text-center text-gray-300 mb-8">Steve the Wise challenges you. Answer his questions to prove your worth.</p>
 
-        <form id="assessment-form" novalidate> <!-- novalidate prevents default browser popups -->
+        <form id="assessment-form" novalidate>
             <div id="questions-container" class="space-y-8">
-                <!-- Questions will be dynamically loaded here -->
                 <p id="loading-text" class="text-center text-yellow-300 text-2xl">Loading questions from the database...</p>
             </div>
 
@@ -138,7 +135,6 @@
             window.location.href = 'login.html';
         }
 
-        // *** FIXED: Use the Vercel proxy path ***
         const API_BASE_URL = '/api';
 
         const questionsContainer = document.getElementById('questions-container');
@@ -148,7 +144,6 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // *** FIXED: Updated fetch URL ***
                 const response = await fetch(`${API_BASE_URL}/assessment/questions`, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
@@ -205,7 +200,6 @@
         assessmentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // --- VALIDATION LOGIC (REVISED) ---
             if (!assessmentForm.checkValidity()) {
                 const firstInvalidElement = assessmentForm.querySelector(':invalid');
                 
@@ -224,7 +218,6 @@
                 }
                 return;
             }
-            // --- END VALIDATION ---
 
             submitBtn.disabled = true;
             submitBtn.textContent = 'Analyzing...';
@@ -244,7 +237,6 @@
             }
 
             try {
-                // *** FIXED: Updated fetch URL ***
                 const response = await fetch(`${API_BASE_URL}/assessment/submit`, {
                     method: 'POST',
                     headers: {
@@ -253,6 +245,14 @@
                     },
                     body: JSON.stringify({ answers: answers })
                 });
+
+                // *** NEW: Handle 401 Unauthorized error on submit ***
+                if (response.status === 401) {
+                    localStorage.removeItem('accessToken');
+                    alert("Your session has expired. Please log in again.");
+                    window.location.href = 'login.html';
+                    return; // Stop further execution
+                }
 
                 if (!response.ok) throw new Error('Failed to submit assessment.');
 
