@@ -14,11 +14,8 @@
         body { 
             font-family: 'Inter', sans-serif; 
             color: #ffffff;
-            /* --- FIX: Updated background styles to prevent stretching --- */
-            background-color: #1a1a1a; /* Fallback color */
-            background-image: url('https://i.pinimg.com/originals/31/d0/a9/31d0a912e58198b5170af0fb328842b1.gif');
-            background-repeat: no-repeat;
-            background-position: center;
+            /* --- REMOVED: Background GIF removed --- */
+            background-color: #1a1a1a; /* Solid background color */
             position: relative;
         }
 
@@ -141,6 +138,9 @@
             window.location.href = 'login.html';
         }
 
+        // *** FIXED: Use the Vercel proxy path ***
+        const API_BASE_URL = '/api';
+
         const questionsContainer = document.getElementById('questions-container');
         const assessmentForm = document.getElementById('assessment-form');
         const submitBtn = document.getElementById('submit-btn');
@@ -148,7 +148,8 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const response = await fetch('http://127.0.0.1:8000/assessment/questions', {
+                // *** FIXED: Updated fetch URL ***
+                const response = await fetch(`${API_BASE_URL}/assessment/questions`, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
 
@@ -243,7 +244,8 @@
             }
 
             try {
-                const response = await fetch('http://127.0.0.1:8000/assessment/submit', {
+                // *** FIXED: Updated fetch URL ***
+                const response = await fetch(`${API_BASE_URL}/assessment/submit`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
