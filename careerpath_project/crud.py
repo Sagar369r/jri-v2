@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime, timedelta
+import json
 
 import models, schemas, auth
 
@@ -93,3 +94,57 @@ def create_assessment(db: Session, user_id: Optional[int], score: float, answers
     db.commit()
     
     return db_assessment
+# Add these new functions to your crud.py file
+
+def get_assessment(db: Session, assessment_id: int):
+    """
+    Retrieves a single assessment by its ID.
+    """
+    return db.query(models.Assessment).filter(models.Assessment.id == assessment_id).first()
+
+def update_assessment_analysis(db: Session, assessment_id: int, analysis: str, suggestions: str):
+    """
+    Updates an assessment record with the new AI analysis and suggestions.
+    """
+    db_assessment = db.query(models.Assessment).filter(models.Assessment.id == assessment_id).first()
+    if db_assessment:
+        db_assessment.analysis = analysis
+        db_assessment.suggestions = suggestions
+        db.commit()
+        db.refresh(db_assessment)
+    return db_assessment
+
+def recalculate_assessment_details(db: Session, assessment: models.Assessment):
+    """
+    Recalculates the category summary and incorrect answers for an existing assessment.
+    This is needed to generate the AI feedback.
+    """
+    categories_summary = {}
+    incorrect_answers = []
+    
+    # The assessment answers are stored as a JSON string, so we need to parse it
+    answers_list = json.loads(assessment.answers)
+
+    for answer_data in answers_list:
+        # The stored format might be slightly different, adjust keys if necessary
+        option_id = answer_data.get('selected_option_id')
+        question_id = answer_data.get('question_id')
+
+        option = get_option(db, option_id=option_id)
+        if not option: continue
+        
+        question = get_question(db, question_id=question_id)
+        if not question: continue
+
+        category = question.category
+        if category not in categories_summary:
+            categories_summary[category] = {'score': 0, 'total': 0}
+            
+        max_points = get_max_points_for_question(db, question.id)
+        categories_summary[category]['score'] += option.points
+        categories_summary[category]['total'] += max_points
+        
+        if option.points == 0:
+            incorrect_answers.append({"question": question.text, "selected_option": option.text})
+            
+    return categories_summary, incorrect_answers
