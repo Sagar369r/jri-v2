@@ -86,11 +86,6 @@
             width: 90%; max-width: 600px; padding: 2rem; border-radius: 8px;
         }
 
-        .rewards-section, .analysis-text-area {
-            background-color: rgba(0,0,0,0.4); border: 2px solid #4a4a4a;
-            padding: 1rem; border-radius: 6px;
-        }
-
         .analysis-text-area {
             max-height: 250px; overflow-y: auto; text-align: left; 
             font-family: 'Inter', sans-serif;
@@ -141,18 +136,7 @@
         </div>
     </div>
 
-    <div id="analysis-modal" class="modal">
-        <div class="modal-content">
-            <h1 class="text-4xl text-yellow-400 mb-4 text-center">Quest Complete!</h1>
-            <div class="rewards-section mb-6">
-                <h2 class="text-2xl text-center mb-2">Your Grade</h2>
-                <div id="grade-display" class="text-4xl text-green-400 font-bold text-center">-- / 100</div>
-            </div>
-            <h2 class="text-2xl text-left mb-2">Steve's Analysis:</h2>
-            <div id="analysis-text" class="analysis-text-area">Loading analysis...</div>
-            <button id="close-analysis-btn" class="btn-pixel btn-green w-full mt-6">Continue</button>
-        </div>
-    </div>
+    <!-- REMOVED: The old analysis modal is no longer needed on this page -->
 
     <div id="resume-modal" class="modal">
         <div class="modal-content">
@@ -202,8 +186,7 @@
         
         const contextModal = document.getElementById('context-modal');
         const closeContextBtn = document.getElementById('close-context-btn');
-        const analysisModal = document.getElementById('analysis-modal');
-        const closeAnalysisBtn = document.getElementById('close-analysis-btn');
+        // REMOVED: Analysis modal variables
         const resumeModal = document.getElementById('resume-modal');
         const closeResumeBtn = document.getElementById('close-resume-btn');
         const resumeForm = document.getElementById('resume-form');
@@ -289,7 +272,7 @@
             const loadingManager = new THREE.LoadingManager(() => {
                 setTimeout(() => {
                     loadingScreenEl.classList.remove('visible');
-                    handleReturnFromAssessment();
+                    // REMOVED: handleReturnFromAssessment() is no longer needed here
                     showContextModal();
                 }, 750);
             });
@@ -340,7 +323,7 @@
                 contextModal.classList.remove('visible');
                 localStorage.setItem('hasSeenIntroContext', 'true');
             });
-            closeAnalysisBtn.addEventListener('click', () => analysisModal.classList.remove('visible'));
+            // REMOVED: analysis modal event listener
             closeResumeBtn.addEventListener('click', () => resumeModal.classList.remove('visible'));
             fileInput.addEventListener('change', () => {
                 if (fileInput.files.length > 0) {
@@ -362,40 +345,7 @@
             }
         }
         
-        async function handleReturnFromAssessment() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/assessment/latest`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                if (response.status === 401) {
-                    localStorage.removeItem('accessToken');
-                    window.location.href = 'login.html';
-                    return;
-                }
-                if (response.ok && response.status !== 204) {
-                    const result = await response.json();
-                    if(result) showAnalysisModal(result);
-                }
-            } catch (error) {
-                console.log("No recent assessment result found or server not running.");
-            }
-        }
-
-        function showAnalysisModal(result) {
-            const gradeDisplay = document.getElementById('grade-display');
-            const analysisText = document.getElementById('analysis-text');
-            const maxScore = 104;
-            const percentageScore = Math.round((result.score / maxScore) * 100);
-            gradeDisplay.textContent = `${percentageScore} / 100`;
-            
-            if (result.analysis) {
-                analysisText.innerHTML = marked.parse(result.analysis);
-            } else {
-                analysisText.textContent = "Steve is reviewing your performance...";
-            }
-            
-            analysisModal.classList.add('visible');
-        }
+        // REMOVED: handleReturnFromAssessment and showAnalysisModal functions
 
         function createNPCLabel(npc) {
             const labelDiv = document.createElement('div');
@@ -405,7 +355,8 @@
         }
 
         function onNPCClick(event) {
-            if (activeDialogue.box || analysisModal.classList.contains('visible') || resumeModal.classList.contains('visible') || contextModal.classList.contains('visible')) return;
+            // REMOVED: check for analysis modal visibility
+            if (activeDialogue.box || resumeModal.classList.contains('visible') || contextModal.classList.contains('visible')) return;
             const mouse = new THREE.Vector2((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(mouse, camera);
@@ -465,7 +416,6 @@
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             try {
-                // *** FIXED: Updated fetch URL ***
                 const response = await fetch(`${API_BASE_URL}/users/me/resume`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${accessToken}` },
