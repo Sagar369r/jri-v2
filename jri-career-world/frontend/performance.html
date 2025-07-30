@@ -130,62 +130,11 @@
             window.location.href = 'login.html';
         }
         
-        // *** FIXED: Use the Vercel proxy path ***
         const API_BASE_URL = '/api';
 
         const resumeContainer = document.getElementById('resume-analysis-content');
         const assessmentContainer = document.getElementById('assessment-history-content');
 
-        // --- Magical Particle Effect ---
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        let particles = [];
-
-        function createParticle() {
-            particles.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                vx: Math.random() * 0.4 - 0.2,
-                vy: Math.random() * 0.4 - 0.2,
-                radius: Math.random() * 1.5 + 0.5,
-                opacity: Math.random() * 0.5 + 0.2
-            });
-        }
-
-        function animateParticles() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < particles.length; i++) {
-                const p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(168, 85, 247, ${p.opacity})`;
-                ctx.fill();
-            }
-            requestAnimationFrame(animateParticles);
-        }
-
-        for (let i = 0; i < 100; i++) {
-            createParticle();
-        }
-        animateParticles();
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            particles = [];
-            for (let i = 0; i < 100; i++) {
-                createParticle();
-            }
-        });
-        // --- End Particle Effect ---
-
-
-        // --- Data Fetching ---
         document.addEventListener('DOMContentLoaded', () => {
             fetchUserData();
             fetchAssessmentHistory();
@@ -193,7 +142,6 @@
 
         async function fetchUserData() {
             try {
-                // *** FIXED: Updated fetch URL ***
                 const response = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
@@ -213,7 +161,6 @@
 
         async function fetchAssessmentHistory() {
             try {
-                // *** FIXED: Updated fetch URL ***
                 const response = await fetch(`${API_BASE_URL}/assessment/history`, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
@@ -221,15 +168,25 @@
                 const history = await response.json();
 
                 if (history.length > 0) {
-                    let historyHTML = '<ul class="space-y-6">'; // Increased spacing
+                    let historyHTML = '<ul class="space-y-6">';
                     const maxScore = 104;
+                    
                     history.forEach(item => {
                         const grade = Math.round((item.score / maxScore) * 100);
                         const date = new Date(item.created_at).toLocaleDateString();
-                        const analysisHTML = item.analysis ? `<div class="markdown-content mt-3 text-sm text-gray-400 border-t border-gray-600 pt-3">${marked.parse(item.analysis)}</div>` : '';
+                        let analysisHTML = '';
+
+                        if (item.analysis) {
+                            analysisHTML = `<div class="markdown-content mt-3 text-sm text-gray-400 border-t border-gray-600 pt-3">${marked.parse(item.analysis)}</div>`;
+                        } else {
+                            // *** NEW: If no analysis, show a button to generate it ***
+                            analysisHTML = `<div class="mt-3 border-t border-gray-600 pt-3">
+                                <button onclick="generateAnalysis(${item.id})" class="text-purple-300 hover:text-purple-100 text-sm">Generate AI Insight</button>
+                            </div>`;
+                        }
 
                         historyHTML += `
-                            <li class="p-3 bg-purple-900 bg-opacity-30 rounded-md border border-purple-700">
+                            <li class="p-3 bg-purple-900 bg-opacity-30 rounded-md border border-purple-700" id="assessment-item-${item.id}">
                                 <div class="flex justify-between items-center">
                                     <span class="text-gray-300">Trial on ${date}</span>
                                     <span class="font-bold text-lg text-green-400">${grade}/100</span>
@@ -248,6 +205,72 @@
                 assessmentContainer.innerHTML = `<p class="text-red-400">Could not retrieve your trial history.</p>`;
             }
         }
+
+        // *** NEW: Function to call the backend to generate AI analysis for a specific assessment ***
+        async function generateAnalysis(assessmentId) {
+            const itemElement = document.getElementById(`assessment-item-${assessmentId}`);
+            const buttonContainer = itemElement.querySelector('div:last-child');
+            buttonContainer.innerHTML = '<p class="text-sm text-yellow-300">Malgosha is scrying... This may take a moment.</p>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/assessment/${assessmentId}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to generate analysis.');
+
+                const result = await response.json();
+                if (result.analysis) {
+                    buttonContainer.innerHTML = `<div class="markdown-content mt-3 text-sm text-gray-400 border-t border-gray-600 pt-3">${marked.parse(result.analysis)}</div>`;
+                } else {
+                    throw new Error('Analysis came back empty.');
+                }
+            } catch (error) {
+                console.error("Error generating analysis:", error);
+                buttonContainer.innerHTML = `<p class="text-sm text-red-400">The vision is unclear. Please try again later.</p>`;
+            }
+        }
+        
+        // Make the function globally accessible so the inline onclick can find it
+        window.generateAnalysis = generateAnalysis;
+
+        // --- Magical Particle Effect ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let particles = [];
+
+        function createParticle() {
+            particles.push({
+                x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                vx: Math.random() * 0.4 - 0.2, vy: Math.random() * 0.4 - 0.2,
+                radius: Math.random() * 1.5 + 0.5, opacity: Math.random() * 0.5 + 0.2
+            });
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(168, 85, 247, ${p.opacity})`;
+                ctx.fill();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+
+        for (let i = 0; i < 100; i++) createParticle();
+        animateParticles();
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            particles = [];
+            for (let i = 0; i < 100; i++) createParticle();
+        });
     </script>
 
 </body>
