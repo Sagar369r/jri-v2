@@ -2,19 +2,23 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-# easyocr is no longer needed
 import os 
 
 # Import all the new router files
 from routers import auth, users, assessment, interview
 from database import engine, Base
 
-# Create all database tables
-Base.metadata.create_all(bind=engine)
+# This line will be moved
+# Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # The easyocr reader is no longer initialized at startup
+    # --- MOVED TABLE CREATION HERE ---
+    # This is a more reliable place to ensure tables are created on startup.
+    print("Creating database tables...")
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created.")
+    
     print("Lifespan start: Application is ready.")
     yield
     print("Closing application.")
@@ -29,8 +33,7 @@ app = FastAPI(
 origins = [
     "http://127.0.0.1:5500",
     "http://localhost:5500",
-    "https://jri-v2.vercel.app"
-    "https://jobreadinessindex.vercel.app"
+    "https://jobreadinessindex.vercel.app",
     "null"
 ]
 
