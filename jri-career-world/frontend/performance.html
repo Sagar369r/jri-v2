@@ -18,7 +18,7 @@
             color: #ffffff;
             background-color: #0c0a1a; /* Dark purple background */
             position: relative;
-            overflow: hidden;
+            /* overflow: hidden; <-- This was removed to allow scrolling */
         }
 
         #particle-canvas {
@@ -94,10 +94,12 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<!-- UPDATED: Removed flex centering to allow natural scrolling on mobile -->
+<body class="min-h-screen p-4">
     <canvas id="particle-canvas"></canvas>
 
-    <div class="content-container w-full max-w-5xl p-8 rounded-lg">
+    <!-- UPDATED: Added mx-auto for horizontal centering in a scrolling layout -->
+    <div class="content-container w-full max-w-5xl p-8 rounded-lg mx-auto">
         <h1 class="text-4xl md:text-5xl text-center text-purple-400 mb-4">Malgosha's Insight</h1>
         <p class="text-center text-gray-300 mb-8">The wizard reveals your progress. Gaze into the scrying pool to see your strengths and weaknesses.</p>
 
@@ -179,7 +181,6 @@
                         if (item.analysis) {
                             analysisHTML = `<div class="markdown-content mt-3 text-sm text-gray-400 border-t border-gray-600 pt-3">${marked.parse(item.analysis)}</div>`;
                         } else {
-                            // *** NEW: If no analysis, show a button to generate it ***
                             analysisHTML = `<div class="mt-3 border-t border-gray-600 pt-3">
                                 <button onclick="generateAnalysis(${item.id})" class="text-purple-300 hover:text-purple-100 text-sm">Generate AI Insight</button>
                             </div>`;
@@ -206,7 +207,6 @@
             }
         }
 
-        // *** NEW: Function to call the backend to generate AI analysis for a specific assessment ***
         async function generateAnalysis(assessmentId) {
             const itemElement = document.getElementById(`assessment-item-${assessmentId}`);
             const buttonContainer = itemElement.querySelector('div:last-child');
@@ -232,7 +232,6 @@
             }
         }
         
-        // Make the function globally accessible so the inline onclick can find it
         window.generateAnalysis = generateAnalysis;
 
         // --- Magical Particle Effect ---
