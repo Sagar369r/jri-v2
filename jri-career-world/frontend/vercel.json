@@ -5,7 +5,7 @@
       "destination": "https://jri-v2.onrender.com/:path*"
     },
     {
-      "source": "/((?!api/|models/|.*\\.(glb|gltf|json|png|jpg|jpeg|webp|svg|wasm|js|css)).*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ],
