@@ -10,7 +10,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Pixelify+Sans:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- NEW: Added marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <style>
@@ -19,6 +18,7 @@
             color: #ffffff;
             background-color: #0c0a1a; /* Dark purple background */
             position: relative;
+            overflow: hidden;
         }
 
         #particle-canvas {
@@ -78,7 +78,6 @@
         .scrollable-content::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 4px; }
         .scrollable-content::-webkit-scrollbar-thumb:hover { background: #c084fc; }
         
-        /* --- NEW: Styles for rendered Markdown --- */
         .markdown-content h3 {
             font-family: 'Pixelify Sans', sans-serif;
             font-size: 1.1rem;
@@ -130,6 +129,9 @@
         if (!accessToken) {
             window.location.href = 'login.html';
         }
+        
+        // *** FIXED: Use the Vercel proxy path ***
+        const API_BASE_URL = '/api';
 
         const resumeContainer = document.getElementById('resume-analysis-content');
         const assessmentContainer = document.getElementById('assessment-history-content');
@@ -191,14 +193,14 @@
 
         async function fetchUserData() {
             try {
-                const response = await fetch('http://127.0.0.1:8000/users/me', {
+                // *** FIXED: Updated fetch URL ***
+                const response = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
                 if (!response.ok) throw new Error('Failed to fetch user data.');
                 const user = await response.json();
 
                 if (user.resume_analysis) {
-                    // --- FIX: Use marked.js to render resume analysis ---
                     resumeContainer.innerHTML = `<div class="markdown-content text-gray-300">${marked.parse(user.resume_analysis)}</div>`;
                 } else {
                     resumeContainer.innerHTML = `<p class="text-gray-400">The scrying pool is cloudy... You have not yet submitted a resume scroll for analysis.</p>`;
@@ -211,7 +213,8 @@
 
         async function fetchAssessmentHistory() {
             try {
-                const response = await fetch('http://127.0.0.1:8000/assessment/history', {
+                // *** FIXED: Updated fetch URL ***
+                const response = await fetch(`${API_BASE_URL}/assessment/history`, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
                 if (!response.ok) throw new Error('Failed to fetch assessment history.');
@@ -223,7 +226,6 @@
                     history.forEach(item => {
                         const grade = Math.round((item.score / maxScore) * 100);
                         const date = new Date(item.created_at).toLocaleDateString();
-                        // --- FIX: Added the analysis section ---
                         const analysisHTML = item.analysis ? `<div class="markdown-content mt-3 text-sm text-gray-400 border-t border-gray-600 pt-3">${marked.parse(item.analysis)}</div>` : '';
 
                         historyHTML += `
