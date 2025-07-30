@@ -14,9 +14,7 @@
         body { 
             font-family: 'Inter', sans-serif; 
             color: #ffffff;
-            background-image: url('https://i.pinimg.com/originals/31/d0/a9/31d0a912e58198b5170af0fb328842b1.gif');
-            background-size: cover;
-            background-position: center;
+            background-color: #1a1a1a; /* Solid background color */
             position: relative;
         }
 
@@ -122,6 +120,9 @@
         if (!accessToken) {
             window.location.href = 'login.html';
         }
+        
+        // *** FIXED: Use the Vercel proxy path ***
+        const API_BASE_URL = '/api';
 
         const resumeForm = document.getElementById('resume-form');
         const fileInput = document.getElementById('resume-file');
@@ -155,7 +156,8 @@
             formData.append('file', fileInput.files[0]);
 
             try {
-                const response = await fetch('http://127.0.0.1:8000/users/me/resume', {
+                // *** FIXED: Updated fetch URL ***
+                const response = await fetch(`${API_BASE_URL}/users/me/resume`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`
