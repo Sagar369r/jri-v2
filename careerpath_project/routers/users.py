@@ -5,6 +5,14 @@ import io, re
 import crud, models, schemas, auth, ai_analysis, cloudinary_service
 from database import SessionLocal
 
+# New imports for pytesseract and image handling
+import pytesseract
+from PIL import Image
+
+# Imports for handling PDF and DOCX files
+import PyPDF2
+import docx
+
 router = APIRouter()
 
 def get_db():
@@ -39,7 +47,6 @@ async def upload_and_analyze_resume(
     
     if filename.endswith(".pdf"):
         try:
-            import PyPDF2
             pdf_reader = PyPDF2.PdfReader(io.BytesIO(contents))
             for page in pdf_reader.pages:
                 text += page.extract_text() or ""
@@ -47,7 +54,6 @@ async def upload_and_analyze_resume(
             raise HTTPException(status_code=400, detail=f"Could not read PDF file: {e}")
     elif filename.endswith(".docx"):
         try:
-            import docx
             doc = docx.Document(io.BytesIO(contents))
             for para in doc.paragraphs:
                 text += para.text + "\n"
@@ -55,8 +61,11 @@ async def upload_and_analyze_resume(
             raise HTTPException(status_code=400, detail=f"Could not read DOCX file: {e}")
     elif filename.endswith((".png", ".jpg", ".jpeg")):
         try:
-            result = request.app.state.ocr_reader.readtext(contents)
-            text = "\n".join([item[1] for item in result])
+            # --- UPDATED OCR LOGIC ---
+            # Use Pillow to open the image from the uploaded file's bytes
+            image = Image.open(io.BytesIO(contents))
+            # Use pytesseract to extract text from the image
+            text = pytesseract.image_to_string(image)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Could not read image file with OCR: {e}")
     else:

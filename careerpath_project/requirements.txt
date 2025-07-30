@@ -16,3 +16,5 @@ python-jose
 pandas
 python-multipart
 cloudinary
+pytesseract
+Pillow

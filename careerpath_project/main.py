@@ -2,7 +2,8 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import easyocr
+# easyocr is no longer needed
+import os 
 
 # Import all the new router files
 from routers import auth, users, assessment, interview
@@ -13,9 +14,8 @@ Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Initializing OCR reader...")
-    app.state.ocr_reader = easyocr.Reader(['en'])
-    print("OCR reader initialized.")
+    # The easyocr reader is no longer initialized at startup
+    print("Lifespan start: Application is ready.")
     yield
     print("Closing application.")
 
@@ -25,11 +25,18 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# --- Deployment-Ready CORS Configuration ---
 origins = [
     "http://127.0.0.1:5500",
     "http://localhost:5500",
+    "https://jri-v2.vercel.app"
     "null"
 ]
+
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
