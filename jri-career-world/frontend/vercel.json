@@ -1,15 +1,23 @@
 {
-  "routes": [
+  "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "https://jri-v2.onrender.com/:path*"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!api/|models/|.*\\.(glb|gltf|json|png|jpg|jpeg|webp|svg|wasm|js|css)).*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/models/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ]
 }
