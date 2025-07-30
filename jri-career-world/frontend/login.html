@@ -9,12 +9,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Pixelify+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/gsap.min.js"></script>
     
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
             color: #ffffff;
-            background-image: url('https://i.pinimg.com/originals/31/d0/a9/31d0a912e58198b5170af0fb328842b1.gif');
+            background-image: url('https://i.pinimg.com/originals/31/d0/a9/31d0/a912e58198b5170af0fb328842b1.gif');
             background-size: cover;
             background-position: center;
             position: relative;
@@ -74,11 +75,33 @@
             outline: none;
             border-color: #f7b731;
         }
+
+        #error-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #b91c1c; /* red-700 */
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border: 2px solid #fca5a5; /* red-300 */
+            font-family: 'Pixelify Sans', sans-serif;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+            pointer-events: none;
+        }
+        #error-message.visible {
+            opacity: 1;
+            bottom: 40px;
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div id="login-form-container" class="login-container w-full max-w-md p-8 rounded-lg text-center">
+    <div id="login-form-container" class="login-container w-full max-w-md p-8 rounded-lg text-center opacity-0">
         <h1 class="text-4xl md:text-5xl text-center text-yellow-400 mb-4">Welcome, Adventurer</h1>
         <p class="text-center text-gray-300 mb-8">Enter your email to receive a magic link and begin your journey.</p>
 
@@ -94,6 +117,8 @@
         <p class="text-gray-300">A magic link has been sent to <strong id="user-email-display"></strong>. Click the link in the email to enter the world.</p>
     </div>
 
+    <div id="error-message"></div>
+
     <script>
         const loginForm = document.getElementById('login-form');
         const submitBtn = document.getElementById('submit-btn');
@@ -102,21 +127,38 @@
         const loginFormContainer = document.getElementById('login-form-container');
         const messageContainer = document.getElementById('message-container');
         const userEmailDisplay = document.getElementById('user-email-display');
+        const errorMessageDiv = document.getElementById('error-message');
 
-        // Function to handle successful login
-        function handleLoginSuccess(token) {
-            localStorage.setItem('accessToken', token);
-            window.location.href = 'world.html';
+        // *** FIXED: Use the Vercel proxy path ***
+        const API_BASE_URL = '/api';
+
+        let errorTimeout;
+        function showError(message) {
+            clearTimeout(errorTimeout);
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.classList.add('visible');
+            errorTimeout = setTimeout(() => {
+                errorMessageDiv.classList.remove('visible');
+            }, 5000);
         }
 
-        // Check for magic link token in URL on page load
+        function handleLoginSuccess(token) {
+            localStorage.setItem('accessToken', token);
+            gsap.to(loginFormContainer, { opacity: 0, duration: 0.5, onComplete: () => {
+                // *** FIXED: Redirect to world.html ***
+                window.location.href = 'world.html';
+            }});
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
+            gsap.to(loginFormContainer, { opacity: 1, duration: 1, delay: 0.2 });
+
             const urlParams = new URLSearchParams(window.location.search);
             const token = urlParams.get('token');
 
             if (token) {
                 try {
-                    const response = await fetch('http://127.0.0.1:8000/auth/magic-link/login', {
+                    const response = await fetch(`${API_BASE_URL}/auth/magic-link/login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token: token })
@@ -127,13 +169,12 @@
                     const data = await response.json();
                     handleLoginSuccess(data.access_token);
                 } catch (error) {
-                    alert(error.message);
+                    showError(error.message);
                     history.replaceState(null, '', window.location.pathname);
                 }
             }
         });
 
-        // Handle regular magic link request
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = emailInput.value;
@@ -142,7 +183,7 @@
             submitBtn.textContent = 'Sending...';
 
             try {
-                const response = await fetch('http://127.0.0.1:8000/auth/magic-link/request', {
+                const response = await fetch(`${API_BASE_URL}/auth/magic-link/request`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: email })
@@ -151,25 +192,27 @@
                 if (!response.ok) throw new Error('Something went wrong. Please try again.');
 
                 userEmailDisplay.textContent = email;
-                loginFormContainer.classList.add('hidden');
-                messageContainer.classList.remove('hidden');
+                gsap.to(loginFormContainer, { opacity: 0, duration: 0.5, onComplete: () => {
+                    loginFormContainer.classList.add('hidden');
+                    messageContainer.classList.remove('hidden');
+                    gsap.to(messageContainer, { opacity: 1, duration: 0.5 });
+                }});
             } catch (error) {
-                alert(error.message);
+                showError(error.message);
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Send Magic Link';
             }
         });
 
-        // Handle Developer Login
         devLoginBtn.addEventListener('click', async () => {
             devLoginBtn.disabled = true;
             devLoginBtn.textContent = 'Logging In...';
 
             try {
-                const response = await fetch('http://127.0.0.1:8000/auth/dev-login', {
+                const response = await fetch(`${API_BASE_URL}/auth/dev-login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'dev@example.com' }) // Using a default dev email
+                    body: JSON.stringify({ email: 'dev@example.com' })
                 });
 
                 if (!response.ok) throw new Error('Developer login failed. Check the server.');
@@ -177,7 +220,7 @@
                 const data = await response.json();
                 handleLoginSuccess(data.access_token);
             } catch (error) {
-                alert(error.message);
+                showError(error.message);
                 devLoginBtn.disabled = false;
                 devLoginBtn.textContent = 'Developer Login';
             }
