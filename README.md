@@ -157,4 +157,4 @@ This project is licensed under the MIT License - see the `LICENSE.md` file for d
 ## 📧 Contact
 Suchith Narayan - **suchithnarayan05@gmail.com**
 
-Project Link: [https://github.com/your-username/your-repo](https://github.com/your-username/your-repo)
+Project Link: https://github.com/Sagar369r/jri-v2.git
